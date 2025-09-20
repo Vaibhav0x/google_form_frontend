@@ -1,46 +1,106 @@
+// src/api.js
 import axios from 'axios'
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api'
+
+// Create axios instance
 const instance = axios.create({ baseURL: API_BASE, timeout: 20000 })
 
+// Attach token if available
 instance.interceptors.request.use(cfg => {
     const token = localStorage.getItem('gfc_token')
     if (token) cfg.headers.Authorization = `Bearer ${token}`
     return cfg
 })
 
-export async function register(payload) { return instance.post('/auth/register', payload).then(r => r.data) }
-export async function login(payload) { return instance.post('/auth/login', payload).then(r => r.data) }
+/* ------------------ AUTH ------------------ */
+export async function register(payload) {
+    const response = await instance.post('/auth/register', payload)
+    return response.data
+}
 
-export async function getMyForms() { return instance.get('/forms').then(r => r.data) }
-export async function createForm(payload) { return instance.post('/forms', payload).then(r => r.data) }
-export async function updateForm(formId, payload) { return instance.put(`/forms/${formId}`, payload).then(r => r.data) }
-export async function deleteForm(formId) { return instance.delete(`/forms/${formId}`).then(r => r.data) }
-export async function getForm(formId) { return instance.get(`/forms/${formId}`).then(r => r.data) }
-export async function getFormByShare(uuid) { return instance.get(`/forms/share/uuid/${uuid}`).then(r => r.data) }
+export async function login(payload) {
+    const response = await instance.post('/auth/login', payload)
+    return response.data
+}
 
-export async function submitForm(formId, answers, files) {
-    // answers is array of { field_id, value }
-    const formData = new FormData()
-    formData.append('answers', JSON.stringify(answers))
-    formData.append('submitter_name', localStorage.getItem('gfc_submitter_name') || '')
-    formData.append('submitter_email', localStorage.getItem('gfc_submitter_email') || '')
+/* ------------------ FORMS ------------------ */
+export async function getMyForms() {
+    const response = await instance.get('/forms')
+    return response.data
+}
 
-    // files: array of { fieldId, file }
-    if (Array.isArray(files)) {
-        for (const f of files) {
-            formData.append(`field_${f.fieldId}`, f.file)
+export async function createForm(payload) {
+    const response = await instance.post('/forms', payload)
+    return response.data
+}
+
+export async function updateForm(formId, payload) {
+    const response = await instance.put(`/forms/${formId}`, payload)
+    return response.data
+}
+
+export async function deleteForm(formId) {
+    const response = await instance.delete(`/forms/${formId}`)
+    return response.data
+}
+
+export async function getForm(formId) {
+    const response = await instance.get(`/forms/${formId}`)
+    return response.data
+}
+
+export async function getFormByShare(formId) {
+    const response = await instance.get(`/forms/${formId}/public`)
+    return response.data
+}
+
+export async function submitForm(formId, formData) {
+    const response = await instance.post(
+        `/forms/${formId}/responses`,
+        formData,
+        {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
         }
-    }
-    // use full server URL since submit endpoint is at /api/forms/:id/submit
-    const url = `${instance.defaults.baseURL.replace('/api', '')}/api/forms/${formId}/submit`
-    return axios.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+    );
+    return response.data;
 }
 
-export async function getResponses(formId) { return instance.get(`/forms/${formId.replace('/', '')}`).then(r => r.data) /* not used directly */ }
-export async function fetchResponses(formId) { return axios.get(`${instance.defaults.baseURL.replace('/api', '')}/api/forms/${formId}`).then(r => r.data) }
-
-export async function exportCSV(formId) {
-    const url = `${instance.defaults.baseURL.replace('/api', '')}/api/forms/${formId}/csv`
-    // return full url to call (GET) so browser can download with link
-    return url
+export async function getFormResponses(formId) {
+    const response = await instance.get(`/forms/${formId}/responses`)
+    return response.data
 }
+
+export async function getResponses(formId) {
+    const response = await instance.get(`/forms/${formId}/responses`)
+    return response.data
+}
+
+export async function fetchResponses(formId) {
+    const response = await instance.get(`/forms/${formId}/responses`)
+    return response.data
+}
+
+export function exportCSV(formId) {
+    return `${instance.defaults.baseURL}/forms/${formId}/csv`
+}
+
+/* ------------------ OPTIONAL: GROUPED EXPORT ------------------ */
+const api = {
+    register,
+    login,
+    getMyForms,
+    createForm,
+    updateForm,
+    deleteForm,
+    getForm,
+    getFormByShare,
+    submitForm,
+    getResponses,
+    fetchResponses,
+    exportCSV
+}
+
+export default api

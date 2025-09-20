@@ -4,9 +4,55 @@ export default function FormPreview({ title, description, fields = [] }) {
     return (
         <div className="bg-white p-6 rounded shadow h-full overflow-auto">
             <div className="mb-6">
-                <h2 className="text-2xl font-bold text-purple-700">{title || 'Untitled Form'}</h2>
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-2xl font-bold text-purple-700">{title || 'Untitled Form'}</h2>
+                    <button
+                        onClick={async () => {
+                            const shareUrl = `${window.location.origin}/forms/${window.location.pathname.split('/').pop()}`;
+                            try {
+                                await navigator.clipboard.writeText(shareUrl);
+                                // Create a temporary tooltip
+                                const tooltip = document.createElement('div');
+                                tooltip.textContent = 'Link copied!';
+                                tooltip.style.cssText = `
+                                    position: fixed;
+                                    top: 20px;
+                                    right: 20px;
+                                    background: #4CAF50;
+                                    color: white;
+                                    padding: 8px 16px;
+                                    border-radius: 4px;
+                                    z-index: 1000;
+                                    animation: fadeIn 0.3s, fadeOut 0.3s 1.7s;
+                                `;
+                                document.body.appendChild(tooltip);
+                                setTimeout(() => tooltip.remove(), 2000);
+                            } catch (err) {
+                                alert('Failed to copy link');
+                            }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center gap-2 text-sm"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z" />
+                            <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z" />
+                        </svg>
+                        Share
+                    </button>
+                </div>
                 {description && <div className="text-sm text-slate-600">{description}</div>}
             </div>
+
+            <style jsx>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeOut {
+                    from { opacity: 1; transform: translateY(0); }
+                    to { opacity: 0; transform: translateY(-20px); }
+                }
+            `}</style>
 
             <div className="space-y-6">
                 {fields.map((f, idx) => (

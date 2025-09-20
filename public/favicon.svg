@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Form Icon</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#9333EA" x="0" y="0" width="32" height="32" rx="6"></rect>
+        <path d="M8,8 L24,8 C25.1045695,8 26,8.8954305 26,10 L26,22 C26,23.1045695 25.1045695,24 24,24 L8,24 C6.8954305,24 6,23.1045695 6,22 L6,10 C6,8.8954305 6.8954305,8 8,8 Z M9,12 L23,12 L23,14 L9,14 L9,12 Z M9,16 L23,16 L23,18 L9,18 L9,16 Z M9,20 L17,20 L17,22 L9,22 L9,20 Z" fill="#FFFFFF" fill-rule="nonzero"></path>
+    </g>
+</svg>

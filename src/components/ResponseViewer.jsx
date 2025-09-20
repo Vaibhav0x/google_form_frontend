@@ -1,18 +1,28 @@
 import React, { useEffect, useState } from 'react'
-import axios from 'axios'
-import { exportCSV } from '../api'
+import { exportCSV, getFormResponses } from '../api'
 
 export default function ResponsesModal({ form, onClose }) {
     const [responses, setResponses] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
 
-    useEffect(() => { load(); }, [])
+    useEffect(() => {
+        load()
+    }, [form.id]) // You could also use [form] if the whole form object might change
 
     async function load() {
         try {
-            const url = `${import.meta.env.VITE_API_BASE || 'http://localhost:4000/api'}`.replace('/api', '')
-            const res = await axios.get(`${url}/api/forms/${form.id}`)
-            setResponses(res.data.responses || [])
-        } catch (e) { console.error(e) }
+            setLoading(true)
+            setError(null)
+            const data = await getFormResponses(form.id)
+            console.log(data);
+            setResponses(data.responses || [])
+        } catch (e) {
+            console.error(e)
+            setError('Failed to load responses')
+        } finally {
+            setLoading(false)
+        }
     }
 
     function downloadCSV() {
@@ -31,68 +41,88 @@ export default function ResponsesModal({ form, onClose }) {
                     </div>
                 </div>
 
-                {responses.length === 0 && <div className="text-slate-500">No responses yet</div>}
+                {loading ? (
+                    <div className="text-slate-500">Loading responses...</div>
+                ) : error ? (
+                    <div className="text-red-500">{error}</div>
+                ) : responses.length === 0 ? (
+                    <div className="text-slate-500">No responses yet</div>
+                ) : (
+                    responses.map((response, idx) => (
+                        <div key={response.id || idx} className="mb-3 p-3 border rounded">
+                            <div className="text-xs text-slate-500">
+                                {new Date(response.submitted_at).toLocaleString()} — Anonymous
+                            </div>
+                            <div className="mt-2 space-y-1">
+                                {response.Answers?.map((answer) => {
+                                    const question = answer.Question
+                                    if (!question) return null
 
-                {responses.map((r, idx) => (
-                    <div key={idx} className="mb-3 p-3 border rounded">
-                        <div className="text-xs text-slate-500">{r.response.created_at} — {r.response.submitter_name || 'Anonymous'}</div>
-                        <div className="mt-2 space-y-1">
-                            {r.values.map(v => {
-                                if (v.question_type === 'image_upload') {
-                                    return (
-                                        <div key={v.id} className="mb-4">
-                                            <div className="text-sm font-medium">{v.field_label}</div>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                                                {v.image_urls.map((imageUrl, imageIndex) => (
-                                                    <div key={imageUrl} className="space-y-2">
-                                                        <img
-                                                            src={imageUrl}
-                                                            alt={`Image ${imageIndex + 1}`}
-                                                            className="max-w-full h-auto rounded"
-                                                        />
+                                    if (question.question_type === 'image_upload') {
+                                        return (
+                                            <div key={answer.id} className="mb-4">
+                                                <div className="text-sm font-medium">{question.question_text}</div>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                                                    {JSON.parse(answer.image_urls || '[]').map((imageUrl, imageIndex) => (
+                                                        <div key={imageUrl} className="space-y-2">
+                                                            <img
+                                                                src={imageUrl}
+                                                                alt={`Image ${imageIndex + 1}`}
+                                                                className="max-w-full h-auto rounded"
+                                                            />
+                                                            {/* Checkbox selections */}
+                                                            {answer.image_responses?.checkboxes[imageIndex]?.length > 0 && (
+                                                                <div className="text-sm">
+                                                                    <div className="font-medium">Selected attributes:</div>
+                                                                    <ul className="list-disc list-inside">
+                                                                        {answer.image_responses.checkboxes[imageIndex].map(opt => (
+                                                                            <li key={opt}>{opt}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
 
-                                                        {/* Checkbox selections */}
-                                                        {v.image_responses?.checkboxes[imageIndex]?.length > 0 && (
-                                                            <div className="text-sm">
-                                                                <div className="font-medium">Selected attributes:</div>
-                                                                <ul className="list-disc list-inside">
-                                                                    {v.image_responses.checkboxes[imageIndex].map(opt => (
-                                                                        <li key={opt}>{opt}</li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Multiple choice selection */}
-                                                        {v.image_responses?.multiple_choice[imageIndex] && (
-                                                            <div className="text-sm">
-                                                                <div className="font-medium">Category:</div>
-                                                                <div>{v.image_responses.multiple_choice[imageIndex]}</div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                            {/* Multiple choice selection */}
+                                                            {answer.image_responses?.multiple_choice[imageIndex] && (
+                                                                <div className="text-sm">
+                                                                    <div className="font-medium">Category:</div>
+                                                                    <div>{answer.image_responses.multiple_choice[imageIndex]}</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                }
+                                        )
+                                    }
 
-                                return (
-                                    <div key={v.id}>
-                                        <div className="text-sm font-medium">{v.field_label}</div>
-                                        <div className="text-sm">{v.value}</div>
+                                    return (
+                                        <div key={answer.id}>
+                                            <div className="text-sm font-medium">{answer.Question?.question_text}</div>
+                                            <div className="text-sm">{answer.value}</div>
+                                        </div>
+                                    )
+                                })}
+                                {response.files?.length > 0 && (
+                                    <div>
+                                        <div className="text-sm font-medium">Files</div>
+                                        {response.files.map(f => (
+                                            <a
+                                                key={f.id}
+                                                href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:4000').replace('/api', '')}/uploads/${f.filename}`}
+                                                className="block text-blue-600"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                {f.originalname}
+                                            </a>
+                                        ))}
                                     </div>
-                                );
-                            })}
-                            {r.files?.length > 0 && (
-                                <div>
-                                    <div className="text-sm font-medium">Files</div>
-                                    {r.files.map(f => <a key={f.id} href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:4000').replace('/api', '')}/uploads/${f.filename}`} className="block text-blue-600" target="_blank" rel="noreferrer">{f.originalname}</a>)}
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     )

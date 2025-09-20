@@ -37,9 +37,59 @@ export default function AdminPanel({ user, onLogout }) {
         await load()
     }
 
-    async function handleOpen(id) {
-        const { form } = await getForm(id)
-        setActive(form)
+    async function handleOpen(formInput) {
+        if (formInput === null) {
+            // Create new form
+            setActive({
+                title: 'Untitled Form',
+                description: '',
+                theme: 'default',
+                fields: [],
+                questions: [],
+                allow_multiple_responses: true,
+                require_email: false
+            });
+        } else {
+            try {
+                // If we get just the ID, we need to load the full form
+                const formId = typeof formInput === 'object' ? formInput.id : formInput;
+
+                // Make sure we load fresh from backend
+                const { form: freshForm } = await getForm(formId);
+
+                if (!freshForm) {
+                    throw new Error('Form not found');
+                }
+
+                // Map the questions to fields format
+                const mappedForm = {
+                    ...freshForm,
+                    fields: freshForm.fields.map(field => ({
+                        ...field,
+                        uid: field.id.toString(), // Ensure each field has a unique ID for frontend
+                        id: field.id, // Keep the original ID for backend reference
+                        type: field.type || 'short_answer',
+                        required: !!field.required,
+                        placeholder: field.placeholder || '',
+                        options: field.options || [],
+                        content: field.content || '',
+                        max_images: field.max_images || 1,
+                        checkbox_options: field.checkbox_options || [],
+                        choice_options: field.choice_options || [],
+                        image_only: field.image_only || false,
+                        enable_checkboxes: field.enable_checkboxes || false,
+                        enable_multiple_choice: field.enable_multiple_choice || false,
+                        multiple_choice_label: field.multiple_choice_label || '',
+                        multiple_choice_options: field.multiple_choice_options || [],
+                        image_options: field.image_options || []
+                    }))
+                };
+                setActive(mappedForm);
+            } catch (error) {
+                console.error('Error loading form:', error);
+                alert('Failed to load the form. Please check if the form exists and try again.');
+            }
+        }
     }
 
     return (
