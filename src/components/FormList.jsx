@@ -17,10 +17,10 @@ export default function FormsList({ forms = [], onOpen, onDelete, onViewResponse
             await navigator.clipboard.writeText(shareUrl);
             setCopyStatus('Link copied!');
 
-            // Auto close after 2 seconds
+            // Close modal after 2 seconds
             setTimeout(() => {
-                setShowShareModal(false);
                 setCopyStatus('');
+                setShowShareModal(false);
             }, 2000);
         } catch (err) {
             setCopyStatus('Failed to copy link');
@@ -87,7 +87,7 @@ export default function FormsList({ forms = [], onOpen, onDelete, onViewResponse
                                     onClick={copyToClipboard}
                                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                                 >
-                                    Copy
+                                    {copyStatus || 'Copy'}
                                 </button>
                             </div>
                         </div>
