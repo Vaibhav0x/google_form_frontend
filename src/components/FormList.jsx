@@ -53,7 +53,7 @@ export default function FormsList({ forms = [], onOpen, onDelete, onViewResponse
                                 Share
                             </button>
                             <button onClick={() => onViewResponses(f)} className="px-2 py-1 border rounded text-sm">Responses</button>
-                            <button onClick={() => onOpen(f.id)} className="px-2 py-1 border rounded text-sm">Edit</button>
+                            <button onClick={() => onOpen(f)} className="px-2 py-1 border rounded text-sm">Edit</button>
                             <button onClick={() => onDelete(f.id)} className="px-2 py-1 border rounded text-red-600 text-sm">Delete</button>
                         </div>
                     </div>
