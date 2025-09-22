@@ -5,18 +5,18 @@ export default function ResponsesModal({ form, onClose }) {
     const [responses, setResponses] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [selectedResponse, setSelectedResponse] = useState(null)
 
     useEffect(() => {
-        load()
-    }, [form.id]) // You could also use [form] if the whole form object might change
+        loadResponses()
+    }, [form.id])
 
-    async function load() {
+    async function loadResponses() {
         try {
             setLoading(true)
             setError(null)
             const data = await getFormResponses(form.id)
-            console.log(data);
-            setResponses(data.responses || [])
+            setResponses(data || [])
         } catch (e) {
             console.error(e)
             setError('Failed to load responses')
@@ -48,80 +48,98 @@ export default function ResponsesModal({ form, onClose }) {
                 ) : responses.length === 0 ? (
                     <div className="text-slate-500">No responses yet</div>
                 ) : (
-                    responses.map((response, idx) => (
-                        <div key={response.id || idx} className="mb-3 p-3 border rounded">
-                            <div className="text-xs text-slate-500">
-                                {new Date(response.submitted_at).toLocaleString()} — Anonymous
-                            </div>
-                            <div className="mt-2 space-y-1">
-                                {response.Answers?.map((answer) => {
-                                    const question = answer.Question
-                                    if (!question) return null
+                    <>
+                        {!selectedResponse ? (
+                            // Step 1: List of responses
+                            responses.map((resp) => {
+                                const nameAnswer = resp.answers.find(a => a.question === 'Name')?.answerText || 'Anonymous';
+                                return (
+                                    <div
+                                        key={resp.id}
+                                        className="mb-2 p-3 border rounded cursor-pointer hover:bg-gray-100"
+                                        onClick={() => setSelectedResponse(resp)}
+                                    >
+                                        {new Date(resp.submittedAt).toLocaleString()} — {nameAnswer} ({resp.respondent.email})
+                                    </div>
+                                )
+                            })
+                        ) : (
+                            // Step 2: Detailed read-only filled form
+                            <div>
+                                <button
+                                    onClick={() => setSelectedResponse(null)}
+                                    className="mb-4 px-3 py-1 border rounded"
+                                >
+                                    Back to responses
+                                </button>
 
-                                    if (question.question_type === 'image_upload') {
+                                {selectedResponse.answers
+                                    .filter(a => a.answerText || a.imageUrls || a.files?.length)
+                                    .map((answer) => {
                                         return (
-                                            <div key={answer.id} className="mb-4">
-                                                <div className="text-sm font-medium">{question.question_text}</div>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                                                    {JSON.parse(answer.image_urls || '[]').map((imageUrl, imageIndex) => (
-                                                        <div key={imageUrl} className="space-y-2">
+                                            <div key={answer.question} className="mb-4">
+                                                <div className="text-sm font-medium">{answer.question}</div>
+
+                                                {/* Text / Paragraph / Dropdown / Multiple choice */}
+                                                {answer.answerText && (
+                                                    <input
+                                                        type="text"
+                                                        value={answer.answerText}
+                                                        readOnly
+                                                        className="mt-1 block w-full border rounded px-2 py-1 bg-gray-100"
+                                                    />
+                                                )}
+
+                                                {/* Checkbox selections */}
+                                                {answer.checkboxSelections?.length > 0 && (
+                                                    <ul className="list-disc list-inside mt-1 text-sm">
+                                                        {answer.checkboxSelections.map((opt) => (
+                                                            <li key={opt}>{opt}</li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+
+                                                {/* Multiple choice */}
+                                                {answer.multipleChoiceSelection && (
+                                                    <div className="mt-1 text-sm">{answer.multipleChoiceSelection}</div>
+                                                )}
+
+                                                {/* Images */}
+                                                {answer.imageUrls && JSON.parse(answer.imageUrls).length > 0 && (
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                                                        {JSON.parse(answer.imageUrls).map((img, idx) => (
                                                             <img
-                                                                src={imageUrl}
-                                                                alt={`Image ${imageIndex + 1}`}
+                                                                key={idx}
+                                                                src={img}
+                                                                alt={`img-${idx}`}
                                                                 className="max-w-full h-auto rounded"
                                                             />
-                                                            {/* Checkbox selections */}
-                                                            {answer.image_responses?.checkboxes[imageIndex]?.length > 0 && (
-                                                                <div className="text-sm">
-                                                                    <div className="font-medium">Selected attributes:</div>
-                                                                    <ul className="list-disc list-inside">
-                                                                        {answer.image_responses.checkboxes[imageIndex].map(opt => (
-                                                                            <li key={opt}>{opt}</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
+                                                        ))}
+                                                    </div>
+                                                )}
 
-                                                            {/* Multiple choice selection */}
-                                                            {answer.image_responses?.multiple_choice[imageIndex] && (
-                                                                <div className="text-sm">
-                                                                    <div className="font-medium">Category:</div>
-                                                                    <div>{answer.image_responses.multiple_choice[imageIndex]}</div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                                {/* Files */}
+                                                {answer.files?.length > 0 && (
+                                                    <div className="mt-2">
+                                                        {answer.files.map(f => (
+                                                            <a
+                                                                key={f.id}
+                                                                href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:4000').replace('/api', '')}/uploads/${f.filename}`}
+                                                                className="block text-blue-600"
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                            >
+                                                                {f.originalname}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         )
-                                    }
-
-                                    return (
-                                        <div key={answer.id}>
-                                            <div className="text-sm font-medium">{answer.Question?.question_text}</div>
-                                            <div className="text-sm">{answer.value}</div>
-                                        </div>
-                                    )
-                                })}
-                                {response.files?.length > 0 && (
-                                    <div>
-                                        <div className="text-sm font-medium">Files</div>
-                                        {response.files.map(f => (
-                                            <a
-                                                key={f.id}
-                                                href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:4000').replace('/api', '')}/uploads/${f.filename}`}
-                                                className="block text-blue-600"
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                {f.originalname}
-                                            </a>
-                                        ))}
-                                    </div>
-                                )}
+                                    })}
                             </div>
-                        </div>
-                    ))
+                        )}
+                    </>
                 )}
             </div>
         </div>

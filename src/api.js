@@ -55,18 +55,43 @@ export async function getFormByShare(formId) {
     return response.data
 }
 
+// export async function submitForm(formId, formData) {
+//     console.log("Form data in api.js:", formData);
+//     const response = await instance.post(
+//         `/forms/${formId}/responses`,
+//         formData,
+//         {
+//             headers: {
+//                 'Content-Type': 'multipart/form-data'
+//             }
+//         }
+//     );
+
+//     return response.data;
+// }
+// ✅ FIXED: Proper FormData submission
 export async function submitForm(formId, formData) {
+    console.log('Form data in api.js:', formData);
+
+    // Debug FormData contents
+    console.log('FormData contents in api.js:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+    }
+
     const response = await instance.post(
         `/forms/${formId}/responses`,
         formData,
         {
             headers: {
-                'Content-Type': 'multipart/form-data'
+                // Don't set Content-Type manually for FormData
+                // Let axios set it automatically with boundary
             }
         }
     );
     return response.data;
 }
+
 
 export async function getFormResponses(formId) {
     const response = await instance.get(`/forms/${formId}/responses`)
