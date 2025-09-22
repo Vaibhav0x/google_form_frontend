@@ -101,6 +101,24 @@ export default function FormPreview({ title, description, fields = [] }) {
                                         </div>
                                     )}
 
+                                    {/* Admin Images display */}
+                                    {f.enableAdminImages && f.adminImages && f.adminImages.length > 0 && (
+                                        <div className="mb-4">
+                                            <p className="text-sm font-medium mb-2">Reference Images:</p>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                                                {f.adminImages.map((img, index) => (
+                                                    <div key={img.id} className="relative">
+                                                        <img
+                                                            src={img.url}
+                                                            alt={`Reference image ${index + 1}`}
+                                                            className="w-full h-32 object-cover rounded shadow-sm"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Image upload input */}
                                     <div>
                                         <input

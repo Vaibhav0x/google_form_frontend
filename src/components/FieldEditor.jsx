@@ -2,8 +2,10 @@ import React, { useState, useRef } from 'react'
 
 export default function FieldEditor({ field, onChange }) {
     const [imagePreview, setImagePreview] = useState(field.imageUrl || null)
+    const [adminImagePreviews, setAdminImagePreviews] = useState(field.adminImages || [])
     const [selectedAnnotation, setSelectedAnnotation] = useState(null)
     const imageRef = useRef(null)
+    const adminImageInputRef = useRef(null)
 
     function set(key, value) { onChange({ [key]: value }) }
 
@@ -68,6 +70,70 @@ export default function FieldEditor({ field, onChange }) {
 
             {field.type === 'image_upload' && (
                 <div className="space-y-4">
+                    {/* Admin Images Section */}
+                    <div className="border-b pb-4 mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <label className="text-sm font-medium">Enable Admin Images</label>
+                            <input
+                                type="checkbox"
+                                checked={field.enableAdminImages}
+                                onChange={e => set('enableAdminImages', e.target.checked)}
+                            />
+                        </div>
+
+                        {field.enableAdminImages && (
+                            <div className="space-y-4">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    ref={adminImageInputRef}
+                                    onChange={e => {
+                                        const files = Array.from(e.target.files);
+                                        const readers = files.map(file => {
+                                            return new Promise((resolve) => {
+                                                const reader = new FileReader();
+                                                reader.onload = (e) => resolve(e.target.result);
+                                                reader.readAsDataURL(file);
+                                            });
+                                        });
+
+                                        Promise.all(readers).then(results => {
+                                            const newImages = results.map(dataUrl => ({
+                                                id: Date.now() + Math.random(),
+                                                url: dataUrl
+                                            }));
+                                            const updatedImages = [...(field.adminImages || []), ...newImages];
+                                            set('adminImages', updatedImages);
+                                            setAdminImagePreviews(updatedImages);
+                                        });
+                                    }}
+                                    className="mb-2"
+                                />
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    {(field.adminImages || []).map((img, index) => (
+                                        <div key={img.id} className="relative">
+                                            <img
+                                                src={img.url}
+                                                alt={`Admin uploaded ${index + 1}`}
+                                                className="w-full h-32 object-cover rounded"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const updatedImages = field.adminImages.filter(i => i.id !== img.id);
+                                                    set('adminImages', updatedImages);
+                                                    setAdminImagePreviews(updatedImages);
+                                                }}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                                            >×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Content input field */}
                     <div>
                         <label className="block text-sm font-medium mb-2">Content</label>

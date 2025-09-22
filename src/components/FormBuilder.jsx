@@ -35,7 +35,9 @@ export default function FormBuilderPanel({ form, onSave }) {
             type,
             required: false,
             placeholder: '',
-            options: []
+            options: [],
+            adminImages: [], // Array to store admin uploaded images
+            enableAdminImages: false // Flag to enable/disable admin images
         }
         setLocal(prevLocal => ({
             ...prevLocal,
@@ -70,6 +72,17 @@ export default function FormBuilderPanel({ form, onSave }) {
         })
     }
 
+    // ✅ Added helper to normalize array fields
+    function normalizeArray(val) {
+        if (!val) return []
+        if (Array.isArray(val)) return val
+        try {
+            return JSON.parse(val) // handle string like "[]"
+        } catch {
+            return []
+        }
+    }
+
     async function save() {
         try {
             // convert uid fields to simple objects acceptable by API
@@ -86,20 +99,20 @@ export default function FormBuilderPanel({ form, onSave }) {
                     type: f.type || 'short_answer',
                     required: !!f.required,
                     placeholder: f.placeholder || '',
-                    options: Array.isArray(f.options)
-                        ? f.options.map(o => typeof o === 'string' ? o : o.label || '')
-                        : [],
+                    options: normalizeArray(f.options).map(o =>
+                        typeof o === 'string' ? o : o.label || ''
+                    ),
                     content: f.content || '',
                     max_images: f.max_images || 1,
-                    checkbox_options: Array.isArray(f.checkbox_options) ? f.checkbox_options : [],
+                    checkbox_options: normalizeArray(f.checkbox_options),
                     choice_question: f.choice_question || '',
-                    choice_options: Array.isArray(f.choice_options) ? f.choice_options : [],
+                    choice_options: normalizeArray(f.choice_options),
                     image_only: f.image_only || false,
                     enable_checkboxes: f.enable_checkboxes || false,
                     enable_multiple_choice: f.enable_multiple_choice || false,
                     multiple_choice_label: f.multiple_choice_label || '',
-                    multiple_choice_options: Array.isArray(f.multiple_choice_options) ? f.multiple_choice_options : [],
-                    image_options: Array.isArray(f.image_options) ? f.image_options : []
+                    multiple_choice_options: normalizeArray(f.multiple_choice_options),
+                    image_options: normalizeArray(f.image_options)
                 }))
             };
 
