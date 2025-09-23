@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react'
+import { uploadImage, uploadMultipleImages, deleteImage } from '../services/uploadService'
 
 export default function FieldEditor({ field, onChange }) {
     const [imagePreview, setImagePreview] = useState(field.imageUrl || null)
     const [adminImagePreviews, setAdminImagePreviews] = useState(field.adminImages || [])
     const [selectedAnnotation, setSelectedAnnotation] = useState(null)
+    const [uploading, setUploading] = useState(false)
     const imageRef = useRef(null)
     const adminImageInputRef = useRef(null)
 
@@ -15,16 +17,71 @@ export default function FieldEditor({ field, onChange }) {
         set('options', [...opts, newOption])
     }
 
-    function handleImageUpload(e) {
+    // function handleImageUpload(e) {
+    //     const file = e.target.files[0]
+    //     if (file) {
+    //         const reader = new FileReader()
+    //         reader.onload = (e) => {
+    //             setImagePreview(e.target.result)
+    //             set('imageUrl', e.target.result)
+    //             set('annotations', [])
+    //         }
+    //         reader.readAsDataURL(file)
+    //     }
+    // }
+    async function handleImageUpload(e) {
         const file = e.target.files[0]
         if (file) {
-            const reader = new FileReader()
-            reader.onload = (e) => {
-                setImagePreview(e.target.result)
-                set('imageUrl', e.target.result)
+            setUploading(true)
+            try {
+                const filePath = await uploadImage(file)
+                // Set preview with full URL path
+                setImagePreview(filePath)
+                // Store only the file path in the field
+                set('imageUrl', filePath)
                 set('annotations', [])
+            } catch (error) {
+                alert('Error uploading image: ' + error.message)
+            } finally {
+                setUploading(false)
             }
-            reader.readAsDataURL(file)
+        }
+    }
+
+    // Updated admin images upload handler
+    async function handleAdminImagesUpload(files) {
+        setUploading(true)
+        try {
+            const filePaths = await uploadMultipleImages(files)
+
+            const newImages = filePaths.map(filePath => ({
+                id: Date.now() + Math.random(),
+                url: filePath // Store file path instead of base64
+            }))
+
+            const updatedImages = [...(field.adminImages || []), ...newImages]
+            set('adminImages', updatedImages)
+            setAdminImagePreviews(updatedImages)
+        } catch (error) {
+            alert('Error uploading admin images: ' + error.message)
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    // Handle admin image deletion
+    async function handleAdminImageDelete(img) {
+        try {
+            // Extract filename from path
+            const fileName = img.url.split('/').pop();
+            await deleteImage(fileName);
+
+            // Remove from local state
+            const updatedImages = field.adminImages.filter(i => i.id !== img.id);
+            set('adminImages', updatedImages);
+            setAdminImagePreviews(updatedImages);
+        } catch (error) {
+            alert('Error deleting image: ' + error.message);
         }
     }
 
@@ -88,29 +145,34 @@ export default function FieldEditor({ field, onChange }) {
                                     accept="image/*"
                                     multiple
                                     ref={adminImageInputRef}
+                                    // onChange={e => {
+                                    //     const files = Array.from(e.target.files);
+                                    //     const readers = files.map(file => {
+                                    //         return new Promise((resolve) => {
+                                    //             const reader = new FileReader();
+                                    //             reader.onload = (e) => resolve(e.target.result);
+                                    //             reader.readAsDataURL(file);
+                                    //         });
+                                    //     });
+
+                                    //     Promise.all(readers).then(results => {
+                                    //         const newImages = results.map(dataUrl => ({
+                                    //             id: Date.now() + Math.random(),
+                                    //             url: dataUrl
+                                    //         }));
+                                    //         const updatedImages = [...(field.adminImages || []), ...newImages];
+                                    //         set('adminImages', updatedImages);
+                                    //         setAdminImagePreviews(updatedImages);
+                                    //     });
+                                    // }}
                                     onChange={e => {
                                         const files = Array.from(e.target.files);
-                                        const readers = files.map(file => {
-                                            return new Promise((resolve) => {
-                                                const reader = new FileReader();
-                                                reader.onload = (e) => resolve(e.target.result);
-                                                reader.readAsDataURL(file);
-                                            });
-                                        });
-
-                                        Promise.all(readers).then(results => {
-                                            const newImages = results.map(dataUrl => ({
-                                                id: Date.now() + Math.random(),
-                                                url: dataUrl
-                                            }));
-                                            const updatedImages = [...(field.adminImages || []), ...newImages];
-                                            set('adminImages', updatedImages);
-                                            setAdminImagePreviews(updatedImages);
-                                        });
+                                        handleAdminImagesUpload(files);
                                     }}
                                     className="mb-2"
+                                    disabled={uploading}
                                 />
-
+                                {uploading && <div className="text-sm text-blue-600">Uploading images...</div>}
                                 <div className="grid grid-cols-3 gap-4">
                                     {(field.adminImages || []).map((img, index) => (
                                         <div key={img.id} className="relative">
@@ -120,11 +182,12 @@ export default function FieldEditor({ field, onChange }) {
                                                 className="w-full h-32 object-cover rounded"
                                             />
                                             <button
-                                                onClick={() => {
-                                                    const updatedImages = field.adminImages.filter(i => i.id !== img.id);
-                                                    set('adminImages', updatedImages);
-                                                    setAdminImagePreviews(updatedImages);
-                                                }}
+                                                // onClick={() => {
+                                                //     const updatedImages = field.adminImages.filter(i => i.id !== img.id);
+                                                //     set('adminImages', updatedImages);
+                                                //     setAdminImagePreviews(updatedImages);
+                                                // }}
+                                                onClick={() => handleAdminImageDelete(img)}
                                                 className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
                                             >×</button>
                                         </div>
@@ -266,6 +329,9 @@ export default function FieldEditor({ field, onChange }) {
                                     src={imagePreview}
                                     alt="Preview"
                                     className="max-w-full h-auto"
+                                    onError={(e) => {
+                                        e.target.src = '/placeholder-image.jpg';
+                                    }}
                                 />
                                 {field.annotations?.map((anno, i) => (
                                     <div

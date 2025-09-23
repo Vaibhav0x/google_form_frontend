@@ -112,7 +112,14 @@ export default function FormBuilderPanel({ form, onSave }) {
                     enable_multiple_choice: f.enable_multiple_choice || false,
                     multiple_choice_label: f.multiple_choice_label || '',
                     multiple_choice_options: normalizeArray(f.multiple_choice_options),
-                    image_options: normalizeArray(f.image_options)
+                    image_options: normalizeArray(f.image_options),
+                    // Store file paths instead of base64
+                    imageUrl: f.imageUrl, // This is now a file path like '/uploads/filename.jpg'
+                    adminImages: f.adminImages ? f.adminImages.map(img => ({
+                        id: img.id,
+                        url: img.url // This is now a file path
+                    })) : [],
+                    enableAdminImages: f.enableAdminImages || false
                 }))
             };
 

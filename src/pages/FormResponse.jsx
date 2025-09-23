@@ -17,19 +17,42 @@ export default function FormResponse() {
         loadForm();
     }, [formId]);
 
+    // async function loadForm() {
+    //     try {
+    //         setLoading(true);
+    //         const formData = await api.getFormByShare(formId);
+
+    //         // normalize fields
+    //         formData.fields = formData.fields.map(f => ({
+    //             ...f,
+    //             options: typeof f.options === "string" ? JSON.parse(f.options) : f.options,
+    //             checkbox_options: typeof f.checkbox_options === "string" ? JSON.parse(f.checkbox_options) : f.checkbox_options,
+    //             choice_options: typeof f.choice_options === "string" ? JSON.parse(f.choice_options) : f.choice_options,
+    //         }));
+
+    //         setForm(formData);
+    //     } catch (err) {
+    //         setError(err.response?.data?.message || 'Form not found');
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // }
+
     async function loadForm() {
         try {
             setLoading(true);
             const formData = await api.getFormByShare(formId);
 
-            // normalize fields
+            // normalize fields with proper adminImages parsing
             formData.fields = formData.fields.map(f => ({
                 ...f,
                 options: typeof f.options === "string" ? JSON.parse(f.options) : f.options,
                 checkbox_options: typeof f.checkbox_options === "string" ? JSON.parse(f.checkbox_options) : f.checkbox_options,
                 choice_options: typeof f.choice_options === "string" ? JSON.parse(f.choice_options) : f.choice_options,
+                adminImages: typeof f.adminImages === "string" ? JSON.parse(f.adminImages) : (f.adminImages || []),
             }));
 
+            console.log('Form loaded with fields:', formData.fields);
             setForm(formData);
         } catch (err) {
             setError(err.response?.data?.message || 'Form not found');
@@ -433,7 +456,7 @@ export default function FormResponse() {
                                             )}
 
                                             {/* image_upload - FIXED */}
-                                            {field.type === 'image_upload' && (
+                                            {/* {field.type === 'image_upload' && (
                                                 <div className="space-y-4">
                                                     <input
                                                         type="file"
@@ -515,6 +538,144 @@ export default function FormResponse() {
                                                                                 onChange={() => handleResponse(`${field.uid}_choice`, opt.label || opt)}
                                                                             />
                                                                             <span>{opt.label || opt}</span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )} */}
+                                            {field.type === 'image_upload' && (
+                                                <div className="space-y-4">
+                                                    {/* Display Admin Images if they exist */}
+                                                    {field.enableAdminImages && field.adminImages?.length > 0 && (
+                                                        <div className="mb-4">
+                                                            <div className="text-sm font-medium text-gray-700 mb-2">Reference Images:</div>
+                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                                {field.adminImages.map((adminImg, index) => (
+                                                                    <div key={adminImg.id || index} className="border rounded overflow-hidden">
+                                                                        <img
+                                                                            src={adminImg.url}
+                                                                            alt={`Reference image ${index + 1}`}
+                                                                            className="w-full h-24 object-cover"
+                                                                            onError={(e) => {
+                                                                                e.target.src = '/placeholder-image.jpg';
+                                                                                console.error('Failed to load admin image:', adminImg.url);
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                These are reference images provided by the form creator.
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* User Upload Section */}
+                                                    <div>
+                                                        <div className="text-sm font-medium mb-2">
+                                                            Upload your images {field.max_images > 1 ? `(up to ${field.max_images})` : ''}
+                                                        </div>
+
+                                                        {field.content && (
+                                                            <p className="text-gray-600 text-sm mb-3">{field.content}</p>
+                                                        )}
+
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            multiple={field.max_images > 1}
+                                                            required={field.required && (!responses[field.uid] || responses[field.uid].length === 0)}
+                                                            className="w-full p-2 border rounded"
+                                                            onChange={e => {
+                                                                const newFiles = Array.from(e.target.files);
+                                                                const existing = responses[field.uid] || [];
+                                                                const merged = [...existing, ...newFiles];
+                                                                const limited = field.max_images ? merged.slice(0, field.max_images) : merged;
+                                                                console.log(`Image upload change for ${field.uid}:`, limited);
+                                                                handleResponse(field.uid, limited);
+                                                            }}
+                                                        />
+
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            Accepted formats: JPG, PNG, GIF, etc.
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Image Previews */}
+                                                    {responses[field.uid]?.length > 0 && (
+                                                        <div className="mt-3">
+                                                            <div className="text-sm font-medium mb-2">Your uploaded images:</div>
+                                                            <div className="flex gap-4 flex-wrap">
+                                                                {responses[field.uid].map((file, i) => (
+                                                                    <div key={i} className="relative">
+                                                                        <img
+                                                                            src={URL.createObjectURL(file)}
+                                                                            alt={`Preview ${i + 1}`}
+                                                                            className="h-24 w-24 object-cover rounded border"
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const updated = responses[field.uid].filter((_, idx) => idx !== i);
+                                                                                handleResponse(field.uid, updated);
+                                                                            }}
+                                                                            className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded"
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+                                                                        <div className="text-xs text-gray-500 mt-1 text-center">
+                                                                            {file.name}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Checkbox and Multiple Choice Options */}
+                                                    {(field.checkbox_options?.length > 0 || field.choice_options?.length > 0) && (
+                                                        <div className="mt-4 p-4 bg-gray-50 rounded border">
+                                                            {field.checkbox_options?.length > 0 && (
+                                                                <div className="space-y-2">
+                                                                    <div className="font-medium">Select all that apply:</div>
+                                                                    {field.checkbox_options.map((opt, i) => (
+                                                                        <label key={i} className="flex items-center gap-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={(responses[`${field.uid}_checkboxes`] || []).includes(opt.label || opt)}
+                                                                                onChange={e => {
+                                                                                    const current = responses[`${field.uid}_checkboxes`] || [];
+                                                                                    const optionValue = opt.label || opt;
+                                                                                    let updated;
+                                                                                    if (e.target.checked) {
+                                                                                        updated = [...current, optionValue];
+                                                                                    } else {
+                                                                                        updated = current.filter(v => v !== optionValue);
+                                                                                    }
+                                                                                    handleResponse(`${field.uid}_checkboxes`, updated);
+                                                                                }}
+                                                                            />
+                                                                            <span className="text-sm">{opt.label || opt}</span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {field.choice_options?.length > 0 && (
+                                                                <div className="mt-4 space-y-2">
+                                                                    <div className="font-medium">{field.choice_question || 'Select one:'}</div>
+                                                                    {field.choice_options.map((opt, i) => (
+                                                                        <label key={i} className="flex items-center gap-2">
+                                                                            <input
+                                                                                type="radio"
+                                                                                name={`${field.uid}_choice`}
+                                                                                checked={responses[`${field.uid}_choice`] === (opt.label || opt)}
+                                                                                onChange={() => handleResponse(`${field.uid}_choice`, opt.label || opt)}
+                                                                            />
+                                                                            <span className="text-sm">{opt.label || opt}</span>
                                                                         </label>
                                                                     ))}
                                                                 </div>
