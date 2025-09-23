@@ -45,9 +45,10 @@ export async function deleteForm(formId) {
     return response.data
 }
 
-export async function getForm(formId) {
-    const response = await instance.get(`/forms/${formId}`)
-    return response.data
+
+export async function getForm(id) {
+    const res = await instance.get(`/forms/${id}`);
+    return res.data.form || res.data;  // ✅ support both shapes
 }
 
 export async function getFormByShare(formId) {
@@ -55,21 +56,6 @@ export async function getFormByShare(formId) {
     return response.data
 }
 
-// export async function submitForm(formId, formData) {
-//     console.log("Form data in api.js:", formData);
-//     const response = await instance.post(
-//         `/forms/${formId}/responses`,
-//         formData,
-//         {
-//             headers: {
-//                 'Content-Type': 'multipart/form-data'
-//             }
-//         }
-//     );
-
-//     return response.data;
-// }
-// ✅ FIXED: Proper FormData submission
 export async function submitForm(formId, formData) {
     console.log('Form data in api.js:', formData);
 
