@@ -17,27 +17,6 @@ export default function FormResponse() {
         loadForm();
     }, [formId]);
 
-    // async function loadForm() {
-    //     try {
-    //         setLoading(true);
-    //         const formData = await api.getFormByShare(formId);
-
-    //         // normalize fields
-    //         formData.fields = formData.fields.map(f => ({
-    //             ...f,
-    //             options: typeof f.options === "string" ? JSON.parse(f.options) : f.options,
-    //             checkbox_options: typeof f.checkbox_options === "string" ? JSON.parse(f.checkbox_options) : f.checkbox_options,
-    //             choice_options: typeof f.choice_options === "string" ? JSON.parse(f.choice_options) : f.choice_options,
-    //         }));
-
-    //         setForm(formData);
-    //     } catch (err) {
-    //         setError(err.response?.data?.message || 'Form not found');
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // }
-
     async function loadForm() {
         try {
             setLoading(true);
@@ -73,23 +52,6 @@ export default function FormResponse() {
         });
     }
 
-    // Debug function to log FormData contents
-    // function logFormData(formData) {
-    //     console.log('=== FormData Debug Info ===');
-    //     console.log('FormData entries:');
-    //     for (let [key, value] of formData.entries()) {
-    //         if (value instanceof File) {
-    //             console.log(`${key}:`, {
-    //                 name: value.name,
-    //                 type: value.type,
-    //                 size: value.size
-    //             });
-    //         } else {
-    //             console.log(`${key}:`, value);
-    //         }
-    //     }
-    //     console.log('=== End FormData Debug ===');
-    // }
 
     // Replace your entire handleSubmit function with this:
     async function handleSubmit(e) {

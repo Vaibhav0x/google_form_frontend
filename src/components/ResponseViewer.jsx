@@ -16,9 +16,10 @@ export default function ResponsesModal({ form, onClose }) {
             setLoading(true)
             setError(null)
             const data = await getFormResponses(form.id)
+            console.log('Loaded responses:', data) // Debug log
             setResponses(data || [])
         } catch (e) {
-            console.error(e)
+            console.error('Error loading responses:', e)
             setError('Failed to load responses')
         } finally {
             setLoading(false)
@@ -28,6 +29,17 @@ export default function ResponsesModal({ form, onClose }) {
     function downloadCSV() {
         const downloadUrl = exportCSV(form.id)
         window.open(downloadUrl, '_blank')
+    }
+
+    // Safe JSON parse function
+    const safeJsonParse = (str) => {
+        if (!str) return null
+        try {
+            return JSON.parse(str)
+        } catch (e) {
+            console.error('JSON parse error:', e, 'for string:', str)
+            return null
+        }
     }
 
     return (
@@ -52,14 +64,20 @@ export default function ResponsesModal({ form, onClose }) {
                         {!selectedResponse ? (
                             // Step 1: List of responses
                             responses.map((resp) => {
-                                const nameAnswer = resp.answers.find(a => a.question === 'Name')?.answerText || 'Anonymous';
+                                const nameAnswer = resp.answers?.find(a => a.question?.includes('Name'))?.answerText ||
+                                    resp.respondent?.name || 'Anonymous';
+                                const email = resp.respondent?.email || 'No email';
+
                                 return (
                                     <div
                                         key={resp.id}
                                         className="mb-2 p-3 border rounded cursor-pointer hover:bg-gray-100"
-                                        onClick={() => setSelectedResponse(resp)}
+                                        onClick={() => {
+                                            console.log('Selected response:', resp) // Debug log
+                                            setSelectedResponse(resp)
+                                        }}
                                     >
-                                        {new Date(resp.submittedAt).toLocaleString()} — {nameAnswer} ({resp.respondent.email})
+                                        {new Date(resp.submittedAt).toLocaleString()} — {nameAnswer} ({email})
                                     </div>
                                 )
                             })
@@ -70,73 +88,148 @@ export default function ResponsesModal({ form, onClose }) {
                                     onClick={() => setSelectedResponse(null)}
                                     className="mb-4 px-3 py-1 border rounded"
                                 >
-                                    Back to responses
+                                    ← Back to responses
                                 </button>
 
-                                {selectedResponse.answers
-                                    .filter(a => a.answerText || a.imageUrls || a.files?.length)
-                                    .map((answer) => {
-                                        return (
-                                            <div key={answer.question} className="mb-4">
-                                                <div className="text-sm font-medium">{answer.question}</div>
+                                <div className="mb-4 p-3 bg-gray-50 rounded">
+                                    <div className="text-sm text-gray-600">
+                                        Submitted: {new Date(selectedResponse.submittedAt).toLocaleString()}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        Respondent: {selectedResponse.respondent?.name || 'Anonymous'}
+                                        ({selectedResponse.respondent?.email || 'No email'})
+                                    </div>
+                                </div>
 
-                                                {/* Text / Paragraph / Dropdown / Multiple choice */}
-                                                {answer.answerText && (
-                                                    <input
-                                                        type="text"
-                                                        value={answer.answerText}
-                                                        readOnly
-                                                        className="mt-1 block w-full border rounded px-2 py-1 bg-gray-100"
-                                                    />
-                                                )}
+                                {selectedResponse.answers?.length > 0 ? (
+                                    selectedResponse.answers
+                                        .filter(a => a.answerText || a.imageUrls || a.files || a.checkboxSelections || a.multipleChoiceSelection)
+                                        .map((answer, index) => {
+                                            console.log('Rendering answer:', answer) // Debug log
 
-                                                {/* Checkbox selections */}
-                                                {answer.checkboxSelections?.length > 0 && (
-                                                    <ul className="list-disc list-inside mt-1 text-sm">
-                                                        {answer.checkboxSelections.map((opt) => (
-                                                            <li key={opt}>{opt}</li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                            const imageUrls = Array.isArray(answer.imageUrls) ? answer.imageUrls :
+                                                safeJsonParse(answer.imageUrls) || [];
+                                            const files = Array.isArray(answer.files) ? answer.files :
+                                                safeJsonParse(answer.files) || [];
+                                            const checkboxSelections = Array.isArray(answer.checkboxSelections) ? answer.checkboxSelections :
+                                                safeJsonParse(answer.checkboxSelections) || [];
 
-                                                {/* Multiple choice */}
-                                                {answer.multipleChoiceSelection && (
-                                                    <div className="mt-1 text-sm">{answer.multipleChoiceSelection}</div>
-                                                )}
+                                            return (
+                                                <div key={answer.question || index} className="mb-6 p-4 border rounded">
+                                                    <div className="text-sm font-medium mb-3">
+                                                        {answer.question || `Question ${index + 1}`}
+                                                    </div>
 
-                                                {/* Images */}
-                                                {answer.imageUrls && JSON.parse(answer.imageUrls).length > 0 && (
-                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                                                        {JSON.parse(answer.imageUrls).map((img, idx) => (
-                                                            <img
-                                                                key={idx}
-                                                                src={img}
-                                                                alt={`img-${idx}`}
-                                                                className="max-w-full h-auto rounded"
+                                                    {/* Text Answer */}
+                                                    {answer.answerText && (
+                                                        <div className="mb-2">
+                                                            <div className="text-xs text-gray-500">Answer:</div>
+                                                            <input
+                                                                type="text"
+                                                                value={answer.answerText}
+                                                                readOnly
+                                                                className="mt-1 block w-full border rounded px-2 py-1 bg-gray-100"
                                                             />
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                        </div>
+                                                    )}
 
-                                                {/* Files */}
-                                                {answer.files?.length > 0 && (
-                                                    <div className="mt-2">
-                                                        {answer.files.map(f => (
-                                                            <a
-                                                                key={f.id}
-                                                                href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:4000').replace('/api', '')}/uploads/${f.filename}`}
-                                                                className="block text-blue-600"
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                            >
-                                                                {f.originalname}
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
+                                                    {/* Checkbox Selections */}
+                                                    {checkboxSelections.length > 0 && (
+                                                        <div className="mb-2">
+                                                            <div className="text-xs text-gray-500">Selected options:</div>
+                                                            <ul className="list-disc list-inside mt-1 text-sm">
+                                                                {checkboxSelections.map((opt, idx) => (
+                                                                    <li key={idx}>{opt}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Multiple Choice Selection */}
+                                                    {answer.multipleChoiceSelection && (
+                                                        <div className="mb-2">
+                                                            <div className="text-xs text-gray-500">Selected choice:</div>
+                                                            <div className="mt-1 text-sm p-2 bg-gray-100 rounded">
+                                                                {answer.multipleChoiceSelection}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Image URLs */}
+                                                    {imageUrls.length > 0 && (
+                                                        <div className="mb-2">
+                                                            <div className="text-xs text-gray-500">Uploaded images:</div>
+                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                                                                {imageUrls.map((img, idx) => (
+                                                                    <img
+                                                                        key={idx}
+                                                                        src={img}
+                                                                        alt={`Uploaded image ${idx + 1}`}
+                                                                        className="max-w-full h-32 object-cover rounded border"
+                                                                        onError={(e) => {
+                                                                            e.target.src = '/placeholder-image.jpg';
+                                                                        }}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Files */}
+                                                    {files.length > 0 && (
+                                                        <div className="mb-2">
+                                                            <div className="text-xs text-gray-500">Uploaded files:</div>
+                                                            <div className="mt-2 space-y-1">
+                                                                {files.map((file, idx) => {
+                                                                    const fileName = typeof file === 'string'
+                                                                        ? file.split('/').pop()
+                                                                        : file.filename || file.originalname || `file-${idx + 1}`;
+
+                                                                    const fileUrl = typeof file === 'string'
+                                                                        ? file
+                                                                        : `/uploads/${file.filename}`;
+
+                                                                    return (
+                                                                        <a
+                                                                            key={idx}
+                                                                            href={fileUrl}
+                                                                            className="block text-blue-600 hover:underline"
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                        >
+                                                                            📎 {fileName}
+                                                                        </a>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Image Responses (checkbox selections for images) */}
+                                                    {answer.imageResponses && answer.imageResponses.length > 0 && (
+                                                        <div className="mb-2">
+                                                            <div className="text-xs text-gray-500">Image responses:</div>
+                                                            <ul className="list-disc list-inside mt-1 text-sm">
+                                                                {answer.imageResponses.map((resp, idx) => (
+                                                                    <li key={idx}>{resp}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Fallback for empty answers */}
+                                                    {!answer.answerText && !answer.imageUrls && !answer.files &&
+                                                        !answer.checkboxSelections && !answer.multipleChoiceSelection && (
+                                                            <div className="text-sm text-gray-500 italic">
+                                                                No response provided
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            )
+                                        })
+                                ) : (
+                                    <div className="text-gray-500">No answers found for this response.</div>
+                                )}
                             </div>
                         )}
                     </>
