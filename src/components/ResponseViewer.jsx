@@ -26,10 +26,23 @@ export default function ResponsesModal({ form, onClose }) {
         }
     }
 
-    function downloadCSV() {
-        const downloadUrl = exportCSV(form.id)
-        window.open(downloadUrl, '_blank')
+    async function downloadCSV(formId) {
+        const res = await fetch(`/api/forms/${formId}/csv`);
+        console.log("Response is:", res);
+        if (!res.ok) throw new Error('Failed to fetch CSV');
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `form_responses_${formId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
     }
+
+
 
     // Safe JSON parse function
     const safeJsonParse = (str) => {
@@ -48,7 +61,7 @@ export default function ResponsesModal({ form, onClose }) {
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">Responses — {form.title}</h3>
                     <div className="flex gap-2">
-                        <button onClick={downloadCSV} className="px-3 py-1 border rounded">Export CSV</button>
+                        <button onClick={() => downloadCSV(form.id)} className="px-3 py-1 border rounded">Export CSV</button>
                         <button onClick={onClose} className="px-3 py-1 border rounded">Close</button>
                     </div>
                 </div>
